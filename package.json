@@ -33,7 +33,7 @@
     "dev": "node esbuild.mjs --watch",
     "build": "node esbuild.mjs",
     "lint": "oxlint --report-unused-disable-directives-severity=error",
-    "package": "vsce package",
+    "package": "pnpm build && vsce package --no-dependencies",
     "prepare": "husky",
     "typecheck": "tsc --noEmit"
   },
