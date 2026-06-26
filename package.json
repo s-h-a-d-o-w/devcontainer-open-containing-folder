@@ -65,7 +65,7 @@
         {
           "command": "devcontainer-open-containing-folder.revealInExplorer",
           "when": "remoteName == dev-container",
-          "group": "6_copypath@1000"
+          "group": "navigation@1000"
         }
       ],
       "editor/title/context": [
@@ -78,7 +78,7 @@
     },
     "keybindings": [
       {
-        "key": "shift+alt+r",
+        "key": "ctrl+alt+r",
         "command": "devcontainer-open-containing-folder.revealInExplorer",
         "when": "editorTextFocus && remoteName == dev-container"
       }

@@ -51,56 +51,19 @@ async function getWorkspaceContainerMounts() {
   }
 
   const hostFolder = normalizeLocalFolder(
-    Buffer.from(authority.slice(prefix.length), "hex").toString("utf8"),
+    JSON.parse(Buffer.from(authority.slice(prefix.length), "hex").toString("utf8")).workspacePath,
   );
 
-  try {
-    const { stdout: idsOut } = await execFileAsync("docker", [
-      "ps",
-      "--filter",
-      `label=devcontainer.local_folder=${hostFolder}`,
-      "--format",
-      "{{.ID}}",
-    ]);
-
-    const containerId = idsOut
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .at(0);
-
-    if (!containerId) {
-      return undefined;
-    }
-
-    const { stdout: inspectOut } = await execFileAsync("docker", ["inspect", containerId]);
-    const info = (JSON.parse(inspectOut) as DockerInspectResult[]).at(0);
-    return info?.Mounts ?? undefined;
-  } catch (error) {
-    console.error("docker inspection failed:", error);
-    return undefined;
-  }
+  return hostFolder;
 }
 
-function toHostPath(containerPath: string, mounts: Mount[]) {
-  // Pick the most specific bind mount that contains the file.
-  let mount: Mount | undefined;
-  for (const candidate of mounts) {
-    const isMatch =
-      containerPath === candidate.Destination ||
-      containerPath.startsWith(`${candidate.Destination}/`);
-    if (isMatch && (!mount || candidate.Destination.length > mount.Destination.length)) {
-      mount = candidate;
-    }
-  }
-
-  if (!mount) {
-    return undefined;
-  }
-
-  const relative = containerPath.slice(mount.Destination.length).replace(/^\/+/u, "");
-  // Container paths are POSIX; rejoin onto the host source using the host's separators.
-  return relative ? path.join(mount.Source, ...relative.split("/")) : mount.Source;
+function toHostPath(
+  containerPath: string,
+  containerWorkspacePath: string,
+  hostWorkspacePath: string,
+) {
+  const relativePath = path.posix.relative(containerWorkspacePath, containerPath);
+  return path.join(hostWorkspacePath, relativePath);
 }
 
 /**
@@ -126,15 +89,21 @@ export function activate(context: ExtensionContext) {
         return;
       }
 
-      const mounts = await getWorkspaceContainerMounts();
-      if (!mounts) {
+      const hostWorkspacePath = await getWorkspaceContainerMounts();
+      if (!hostWorkspacePath) {
         window.showErrorMessage(
           "Could not determine the host path for this dev container.",
         );
         return;
       }
 
-      const hostPath = toHostPath(containerPath, mounts);
+      const containerWorkspacePath = workspace.workspaceFolders?.[0]?.uri.fsPath;
+      if (!containerWorkspacePath) {
+        window.showErrorMessage("Couldn't get the container workspace path.");
+        return;
+      }
+
+      const hostPath = toHostPath(containerPath, containerWorkspacePath, hostWorkspacePath);
       if (!hostPath) {
         window.showErrorMessage(
           `"${containerPath}" is not inside a folder mounted from the host.`,
