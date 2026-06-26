@@ -14,9 +14,9 @@
     "reveal",
     "windows"
   ],
-  "homepage": "https://github.com/sbaillou/vscode-remote-ssh-reveal-explorer#readme",
+  "homepage": "https://github.com/s-h-a-d-o-w/devcontainer-open-containing-folder#readme",
   "bugs": {
-    "url": "https://github.com/sbaillou/vscode-remote-ssh-reveal-explorer/issues"
+    "url": "https://github.com/s-h-a-d-o-w/devcontainer-open-containing-folder/issues"
   },
   "license": "MIT",
   "author": {
@@ -56,53 +56,31 @@
   "contributes": {
     "commands": [
       {
-        "command": "remote-ssh-reveal-explorer.revealInExplorer",
-        "title": "Remote-SSH Reveal in File Explorer"
-      },
-      {
-        "command": "remote-ssh-reveal-explorer.test",
-        "title": "Test Remote-SSH Reveal Extension"
+        "command": "devcontainer-open-containing-folder.revealInExplorer",
+        "title": "Open Containing Folder on Host"
       }
     ],
     "menus": {
       "explorer/context": [
         {
-          "command": "remote-ssh-reveal-explorer.revealInExplorer",
-          "when": "remoteName == ssh-remote",
+          "command": "devcontainer-open-containing-folder.revealInExplorer",
+          "when": "remoteName == dev-container",
           "group": "6_copypath@1000"
         }
       ],
       "editor/title/context": [
         {
-          "command": "remote-ssh-reveal-explorer.revealInExplorer",
-          "when": "remoteName == ssh-remote",
+          "command": "devcontainer-open-containing-folder.revealInExplorer",
+          "when": "remoteName == dev-container",
           "group": "2_files"
         }
       ]
     },
-    "configuration": {
-      "type": "object",
-      "title": "Remote-SSH Reveal",
-      "properties": {
-        "remote-ssh-reveal-explorer.networkPath": {
-          "type": "string",
-          "default": "",
-          "description": "Path to the network folder of the Remote-SSH machine.",
-          "scope": "window"
-        },
-        "remote-ssh-reveal-explorer.pathPrefixToStrip": {
-          "type": "string",
-          "default": "",
-          "description": "Prefix to strip from the remote path.",
-          "scope": "window"
-        }
-      }
-    },
     "keybindings": [
       {
         "key": "shift+alt+r",
-        "command": "remote-ssh-reveal-explorer.revealInExplorer",
-        "when": "editorTextFocus && remoteName == 'ssh-remote'"
+        "command": "devcontainer-open-containing-folder.revealInExplorer",
+        "when": "editorTextFocus && remoteName == dev-container"
       }
     ]
   },

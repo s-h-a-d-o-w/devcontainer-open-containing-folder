@@ -1,101 +1,159 @@
-import * as vscode from "vscode";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import path from "node:path";
+import { commands, env, ExtensionContext, Uri, window, workspace } from "vscode";
 import open from "open";
-import path from "path";
+
+const execFileAsync = promisify(execFile);
+
+type Mount = {
+  Destination: string;
+  Source: string;
+};
+
+type DockerInspectResult = {
+  Mounts?: Mount[];
+};
+
+// The `devcontainer.local_folder` label compares case-insensitively on the
+// Windows drive letter (see the Dev Containers CLI's normalizeDevContainerLabelPath).
+function normalizeLocalFolder(value: string) {
+  if (process.platform !== "win32") {
+    return value;
+  }
+
+  const normalized = path.win32.normalize(value);
+  if (normalized.length >= 2 && normalized[1] === ":") {
+    return normalized[0].toLowerCase() + normalized.slice(1);
+  }
+
+  return normalized;
+}
+
+// A dev container workspace folder URI has the authority `dev-container+<hex>`,
+// where <hex> is the hex-encoded host path of the local folder. That value is
+// exactly what the Dev Containers CLI stores in the `devcontainer.local_folder`
+// label, so we can pin the one container instead of enumerating all of them.
+async function getWorkspaceContainerMounts() {
+  if (env.remoteName !== "dev-container") {
+    return undefined;
+  }
+
+  const workspaceFolder = workspace.workspaceFolders?.[0];
+  if (!workspaceFolder) {
+    return undefined;
+  }
+
+  const prefix = "dev-container+";
+  const { authority } = workspaceFolder.uri;
+  if (!authority.startsWith(prefix)) {
+    return undefined;
+  }
+
+  const hostFolder = normalizeLocalFolder(
+    Buffer.from(authority.slice(prefix.length), "hex").toString("utf8"),
+  );
+
+  try {
+    const { stdout: idsOut } = await execFileAsync("docker", [
+      "ps",
+      "--filter",
+      `label=devcontainer.local_folder=${hostFolder}`,
+      "--format",
+      "{{.ID}}",
+    ]);
+
+    const containerId = idsOut
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .at(0);
+
+    if (!containerId) {
+      return undefined;
+    }
+
+    const { stdout: inspectOut } = await execFileAsync("docker", ["inspect", containerId]);
+    const info = (JSON.parse(inspectOut) as DockerInspectResult[]).at(0);
+    return info?.Mounts ?? undefined;
+  } catch (error) {
+    console.error("docker inspection failed:", error);
+    return undefined;
+  }
+}
+
+function toHostPath(containerPath: string, mounts: Mount[]) {
+  // Pick the most specific bind mount that contains the file.
+  let mount: Mount | undefined;
+  for (const candidate of mounts) {
+    const isMatch =
+      containerPath === candidate.Destination ||
+      containerPath.startsWith(`${candidate.Destination}/`);
+    if (isMatch && (!mount || candidate.Destination.length > mount.Destination.length)) {
+      mount = candidate;
+    }
+  }
+
+  if (!mount) {
+    return undefined;
+  }
+
+  const relative = containerPath.slice(mount.Destination.length).replace(/^\/+/u, "");
+  // Container paths are POSIX; rejoin onto the host source using the host's separators.
+  return relative ? path.join(mount.Source, ...relative.split("/")) : mount.Source;
+}
 
 /**
  * @param {vscode.ExtensionContext} context
  */
-export function activate(context: vscode.ExtensionContext) {
-  console.log("Remote-SSH reveal Explorer extension is now active!");
-  console.log("Extension context:", context.extensionPath);
+export function activate(context: ExtensionContext) {
+  const disposable = commands.registerCommand(
+    "devcontainer-open-containing-folder.revealInExplorer",
+    async (arg: Uri) => {
+      let containerPath: string | undefined;
 
-  let disposable = vscode.commands.registerCommand(
-    "remote-ssh-reveal-explorer.revealInExplorer",
-    async function (arg: vscode.Uri) {
-      let remotePath = undefined;
-
-      if (arg instanceof vscode.Uri) {
-        // Triggered by right-click on a file in Explorer
-        console.log(`Right-clicked file: ${arg.fsPath}`);
-        remotePath = arg.fsPath;
+      if (arg instanceof Uri) {
+        containerPath = arg.fsPath;
       } else {
-        // Likely triggered by a shortcut, button, or manually
-        const editor = vscode.window.activeTextEditor;
+        const editor = window.activeTextEditor;
         if (editor) {
-          const doc = editor.document;
-          console.log(`Shortcut on active file: ${doc.uri.fsPath}`);
-          remotePath = doc.uri.fsPath;
-        } else {
-          console.log("No editor is active");
-          remotePath = undefined;
+          containerPath = editor.document.uri.fsPath;
         }
       }
 
-      console.log("Reveal in Explorer command executed with path:", remotePath);
-
-      console.log("File path:", remotePath);
-
-      if (!remotePath) {
-        vscode.window.showErrorMessage("No remote path provided");
+      if (!containerPath) {
+        window.showErrorMessage("Couldn't get a file path.");
         return;
       }
 
-      const dirPath = path.dirname(remotePath);
-      console.log("Remote directory path:", dirPath);
+      const mounts = await getWorkspaceContainerMounts();
+      if (!mounts) {
+        window.showErrorMessage(
+          "Could not determine the host path for this dev container.",
+        );
+        return;
+      }
 
-      const localPath = networkPath(dirPath);
-      console.log("Local network path:", localPath);
+      const hostPath = toHostPath(containerPath, mounts);
+      if (!hostPath) {
+        window.showErrorMessage(
+          `"${containerPath}" is not inside a folder mounted from the host.`,
+        );
+        return;
+      }
+
+      const hostDir = path.dirname(hostPath);
 
       try {
-        await open(localPath);
-
-        vscode.window.showInformationMessage(`Opened folder: ${localPath}`);
+        await open(hostDir);
+        window.showInformationMessage(`Opened folder: ${hostDir}`);
       } catch (error) {
-        console.error("Error opening explorer:", error);
-        vscode.window.showErrorMessage(
-          `Failed to open folder: ${localPath}. Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        window.showErrorMessage(
+          `Failed to open folder: ${hostDir}. Error: ${error instanceof Error ? error.message : "Unknown error"}`,
         );
       }
     },
   );
 
-  let testDisposable = vscode.commands.registerCommand(
-    "remote-ssh-reveal-explorer.test",
-    function () {
-      console.log("Test command executed");
-      vscode.window.showInformationMessage("Extension is working!");
-    },
-  );
-
   context.subscriptions.push(disposable);
-  context.subscriptions.push(testDisposable);
-  console.log("Commands registered successfully");
 }
-
-function networkPath(remotePath: string) {
-  // Determine the correct path separator based on the platform
-  const { platform } = process;
-  console.log("Platform:", platform);
-  const locale = path[platform === "win32" ? "win32" : "posix"];
-
-  // Replace prefix path separators with local ones
-  const prefixToStrip = vscode.workspace
-    .getConfiguration("remote-ssh-reveal-explorer")
-    .get<string>("pathPrefixToStrip");
-  const prefixToStripLocal = prefixToStrip?.replace(/[\\/]/g, locale.sep);
-
-  // Remove prefixToStripLocal if present
-  let remotepathWithoutPrefix = remotePath;
-  if (prefixToStripLocal && remotePath.startsWith(prefixToStripLocal)) {
-    remotepathWithoutPrefix = remotePath.slice(prefixToStripLocal.length);
-  }
-
-  // Compose UNC path
-  const networkPath = vscode.workspace
-    .getConfiguration("remote-ssh-reveal-explorer")
-    .get<string>("networkPath");
-
-  return `${networkPath}${remotepathWithoutPrefix}`;
-}
-
-export function deactivate() {}
