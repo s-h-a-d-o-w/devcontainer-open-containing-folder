@@ -1,45 +1,58 @@
 {
-  "name": "remote-ssh-reveal-explorer",
-  "displayName": "Remote-SSH Reveal in File Explorer",
-  "description": "Seamlessly open Windows File Explorer from Remote-SSH. Right-click any file or folder to reveal it in Windows Explorer.",
+  "name": "devcontainer-open-containing-folder",
+  "displayName": "Devcontainer Open Containing Folder",
   "version": "1.2.2",
-  "icon": "assets/imgs/logo.png",
-  "author": {
-    "name": "Sébastien Baillou",
-    "url": "https://marketplace.visualstudio.com/publishers/sbaillou"
-  },
-  "publisher": "sbaillou",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/sbaillou/vscode-remote-ssh-reveal-explorer"
-  },
-  "bugs": {
-    "url": "https://github.com/sbaillou/vscode-remote-ssh-reveal-explorer/issues"
-  },
-  "homepage": "https://github.com/sbaillou/vscode-remote-ssh-reveal-explorer#readme",
-  "keywords": [
-    "remote-ssh",
-    "windows",
-    "explorer",
-    "file manager",
-    "reveal",
-    "context menu"
-  ],
-  "engines": {
-    "vscode": "^1.74.0"
-  },
-  "type": "module",
+  "description": "Seamlessly open foldersin devcontainers.",
   "categories": [
     "Other"
   ],
-  "extensionKind": [
-    "ui"
+  "keywords": [
+    "context menu",
+    "explorer",
+    "file manager",
+    "remote-ssh",
+    "reveal",
+    "windows"
   ],
-  "activationEvents": [
-    "onStartupFinished"
-  ],
-  "main": "./out/extension.js",
+  "homepage": "https://github.com/sbaillou/vscode-remote-ssh-reveal-explorer#readme",
+  "bugs": {
+    "url": "https://github.com/sbaillou/vscode-remote-ssh-reveal-explorer/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Andreas Opferkuch",
+    "url": "https://marketplace.visualstudio.com/publishers/s-h-a-d-o-w"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/s-h-a-d-o-w/devcontainer-open-containing-folder"
+  },
+  "publisher": "s-h-a-d-o-w",
+  "main": "./dist/extension.js",
+  "scripts": {
+    "dev": "node esbuild.mjs --watch",
+    "build": "node esbuild.mjs",
+    "lint": "oxlint --report-unused-disable-directives-severity=error",
+    "package": "vsce package",
+    "prepare": "husky",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "open": "^10.2.0",
+    "path": "^0.12.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "@types/vscode": "^1.105.0",
+    "@vscode/vsce": "^3.9.2",
+    "esbuild": "^0.28.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.8",
+    "oxfmt": "^0.56.0",
+    "oxlint": "^1.71.0",
+    "oxlint-tsgolint": "^0.23.0",
+    "typescript": "^6.0.3"
+  },
   "contributes": {
     "commands": [
       {
@@ -93,18 +106,15 @@
       }
     ]
   },
-  "scripts": {
-    "test": "echo \"No tests specified\"",
-    "compile": "tsc -p ./",
-    "build": "vcse build",
-    "package": "vsce package"
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "extensionKind": [
+    "ui"
+  ],
+  "icon": "assets/imgs/logo.png",
+  "engines": {
+    "vscode": "^1.105.0"
   },
-  "devDependencies": {
-    "@types/node": "^24.1.0",
-    "@types/vscode": "^1.74.0"
-  },
-  "dependencies": {
-    "open": "^10.2.0",
-    "path": "^0.12.7"
-  }
+  "packageManager": "pnpm@11.9.0+sha512.bd682d5d03fe525ef7c9fd6780c6884d1e756ac4c9c9fe00c538782824310dcf90e3ddc4f53835f06dfaebd5085e41855e0bcbb3b60de2ac5bbab89e5036f03b"
 }
