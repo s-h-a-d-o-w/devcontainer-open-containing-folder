@@ -25,6 +25,7 @@
   "main": "./dist/extension.js",
   "scripts": {
     "build": "node esbuild.ts --production",
+    "dev": "node esbuild.ts",
     "lint": "oxlint --report-unused-disable-directives-severity=error",
     "package": "pnpm build && vsce package --no-dependencies",
     "prepare": "husky",
