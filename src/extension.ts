@@ -1,40 +1,18 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import path from "node:path";
 import { commands, env, ExtensionContext, Uri, window, workspace } from "vscode";
 import open from "open";
 
-const execFileAsync = promisify(execFile);
+function isWindowsPath(value: string) {
+  return /^[a-zA-Z]:[\\/]/.test(value) || value.startsWith("\\\\");
+}
 
-type Mount = {
-  Destination: string;
-  Source: string;
-};
-
-type DockerInspectResult = {
-  Mounts?: Mount[];
-};
-
-// The `devcontainer.local_folder` label compares case-insensitively on the
-// Windows drive letter (see the Dev Containers CLI's normalizeDevContainerLabelPath).
-function normalizeLocalFolder(value: string) {
-  if (process.platform !== "win32") {
-    return value;
-  }
-
-  const normalized = path.win32.normalize(value);
-  if (normalized.length >= 2 && normalized[1] === ":") {
-    return normalized[0].toLowerCase() + normalized.slice(1);
-  }
-
-  return normalized;
+function getPathApi(...values: string[]) {
+  return values.some(isWindowsPath) ? path.win32 : path.posix;
 }
 
 // A dev container workspace folder URI has the authority `dev-container+<hex>`,
-// where <hex> is the hex-encoded host path of the local folder. That value is
-// exactly what the Dev Containers CLI stores in the `devcontainer.local_folder`
-// label, so we can pin the one container instead of enumerating all of them.
-async function getWorkspaceContainerMounts() {
+// where <hex> is the hex-encoded host path of the local folder.
+async function getHostWorkspacePath() {
   if (env.remoteName !== "dev-container") {
     return undefined;
   }
@@ -50,11 +28,7 @@ async function getWorkspaceContainerMounts() {
     return undefined;
   }
 
-  const hostFolder = normalizeLocalFolder(
-    JSON.parse(Buffer.from(authority.slice(prefix.length), "hex").toString("utf8")).workspacePath,
-  );
-
-  return hostFolder;
+  return JSON.parse(Buffer.from(authority.slice(prefix.length), "hex").toString("utf8")).workspacePath
 }
 
 function toHostPath(
@@ -62,13 +36,12 @@ function toHostPath(
   containerWorkspacePath: string,
   hostWorkspacePath: string,
 ) {
-  const relativePath = path.posix.relative(containerWorkspacePath, containerPath);
-  return path.join(hostWorkspacePath, relativePath);
+  const containerPathApi = getPathApi(containerWorkspacePath, containerPath);
+  const hostPathApi = getPathApi(hostWorkspacePath);
+  const relativePath = containerPathApi.relative(containerWorkspacePath, containerPath);
+  return hostPathApi.join(hostWorkspacePath, relativePath);
 }
 
-/**
- * @param {vscode.ExtensionContext} context
- */
 export function activate(context: ExtensionContext) {
   const disposable = commands.registerCommand(
     "devcontainer-open-containing-folder.revealInExplorer",
@@ -89,7 +62,7 @@ export function activate(context: ExtensionContext) {
         return;
       }
 
-      const hostWorkspacePath = await getWorkspaceContainerMounts();
+      const hostWorkspacePath = await getHostWorkspacePath();
       if (!hostWorkspacePath) {
         window.showErrorMessage(
           "Could not determine the host path for this dev container.",
@@ -106,16 +79,14 @@ export function activate(context: ExtensionContext) {
       const hostPath = toHostPath(containerPath, containerWorkspacePath, hostWorkspacePath);
       if (!hostPath) {
         window.showErrorMessage(
-          `"${containerPath}" is not inside a folder mounted from the host.`,
+          `Could not generate a host path out of ${hostWorkspacePath}, ${containerWorkspacePath} and ${containerPath}.`,
         );
         return;
       }
 
       const hostDir = path.dirname(hostPath);
-
       try {
         await open(hostDir);
-        window.showInformationMessage(`Opened folder: ${hostDir}`);
       } catch (error) {
         window.showErrorMessage(
           `Failed to open folder: ${hostDir}. Error: ${error instanceof Error ? error.message : "Unknown error"}`,
