@@ -1,7 +1,7 @@
 {
   "name": "devcontainer-open-containing-folder",
   "displayName": "Devcontainer Open Containing Folder",
-  "version": "1.2.2",
+  "version": "1.0.0",
   "description": "Seamlessly open folders in devcontainers.",
   "categories": [
     "Other"
