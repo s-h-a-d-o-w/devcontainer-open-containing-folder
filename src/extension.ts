@@ -35,10 +35,13 @@ function getHostWorkspacePath() {
     return undefined;
   }
 
-  return JSON.parse(
+  const authorityObject = JSON.parse(
     Buffer.from(authority.slice(prefix.length), "hex").toString("utf8"),
-    // oxlint-disable-next-line typescript/no-unsafe-member-access
-  ).workspacePath as string;
+  ) as { hostPath?: string; workspacePath?: string };
+
+  // vscode: hostPath
+  // cursor: workspacePath
+  return authorityObject.hostPath ?? authorityObject.workspacePath;
 }
 
 function toHostPath(
