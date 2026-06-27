@@ -9,14 +9,6 @@ import {
 } from "vscode";
 import open from "open";
 
-function isWindowsPath(value: string) {
-  return /^[a-zA-Z]:[\\/]/u.test(value) || value.startsWith(String.raw`\\`);
-}
-
-function getPathApi(...values: string[]) {
-  return values.some(isWindowsPath) ? path.win32 : path.posix;
-}
-
 // A dev container workspace folder URI has the authority `dev-container+<hex>`,
 // where <hex> is the hex-encoded host path of the local folder.
 function getHostWorkspacePath() {
@@ -42,20 +34,6 @@ function getHostWorkspacePath() {
   // vscode: hostPath
   // cursor: workspacePath
   return authorityObject.hostPath ?? authorityObject.workspacePath;
-}
-
-function toHostPath(
-  containerPath: string,
-  containerWorkspacePath: string,
-  hostWorkspacePath: string,
-) {
-  const containerPathApi = getPathApi(containerWorkspacePath, containerPath);
-  const hostPathApi = getPathApi(hostWorkspacePath);
-  const relativePath = containerPathApi.relative(
-    containerWorkspacePath,
-    containerPath,
-  );
-  return hostPathApi.join(hostWorkspacePath, relativePath);
 }
 
 export function activate(context: ExtensionContext) {
@@ -93,18 +71,8 @@ export function activate(context: ExtensionContext) {
         return;
       }
 
-      const hostPath = toHostPath(
-        containerPath,
-        containerWorkspacePath,
-        hostWorkspacePath,
-      );
-      if (!hostPath) {
-        window.showErrorMessage(
-          `Could not generate a host path out of ${hostWorkspacePath}, ${containerWorkspacePath} and ${containerPath}.`,
-        );
-        return;
-      }
-
+      const relativePath = path.relative(containerWorkspacePath, containerPath);
+      const hostPath = path.join(hostWorkspacePath, relativePath);
       const hostDir = path.dirname(hostPath);
       try {
         await open(hostDir);
