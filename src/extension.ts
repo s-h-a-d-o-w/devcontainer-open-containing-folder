@@ -1,9 +1,16 @@
 import path from "node:path";
-import { commands, env, ExtensionContext, Uri, window, workspace } from "vscode";
+import {
+  commands,
+  env,
+  ExtensionContext,
+  Uri,
+  window,
+  workspace,
+} from "vscode";
 import open from "open";
 
 function isWindowsPath(value: string) {
-  return /^[a-zA-Z]:[\\/]/.test(value) || value.startsWith("\\\\");
+  return /^[a-zA-Z]:[\\/]/u.test(value) || value.startsWith(String.raw`\\`);
 }
 
 function getPathApi(...values: string[]) {
@@ -12,7 +19,7 @@ function getPathApi(...values: string[]) {
 
 // A dev container workspace folder URI has the authority `dev-container+<hex>`,
 // where <hex> is the hex-encoded host path of the local folder.
-async function getHostWorkspacePath() {
+function getHostWorkspacePath() {
   if (env.remoteName !== "dev-container") {
     return undefined;
   }
@@ -28,7 +35,10 @@ async function getHostWorkspacePath() {
     return undefined;
   }
 
-  return JSON.parse(Buffer.from(authority.slice(prefix.length), "hex").toString("utf8")).workspacePath
+  return JSON.parse(
+    Buffer.from(authority.slice(prefix.length), "hex").toString("utf8"),
+    // oxlint-disable-next-line typescript/no-unsafe-member-access
+  ).workspacePath as string;
 }
 
 function toHostPath(
@@ -38,7 +48,10 @@ function toHostPath(
 ) {
   const containerPathApi = getPathApi(containerWorkspacePath, containerPath);
   const hostPathApi = getPathApi(hostWorkspacePath);
-  const relativePath = containerPathApi.relative(containerWorkspacePath, containerPath);
+  const relativePath = containerPathApi.relative(
+    containerWorkspacePath,
+    containerPath,
+  );
   return hostPathApi.join(hostWorkspacePath, relativePath);
 }
 
@@ -62,7 +75,7 @@ export function activate(context: ExtensionContext) {
         return;
       }
 
-      const hostWorkspacePath = await getHostWorkspacePath();
+      const hostWorkspacePath = getHostWorkspacePath();
       if (!hostWorkspacePath) {
         window.showErrorMessage(
           "Could not determine the host path for this dev container.",
@@ -70,13 +83,18 @@ export function activate(context: ExtensionContext) {
         return;
       }
 
-      const containerWorkspacePath = workspace.workspaceFolders?.[0]?.uri.fsPath;
+      const containerWorkspacePath =
+        workspace.workspaceFolders?.[0]?.uri.fsPath;
       if (!containerWorkspacePath) {
         window.showErrorMessage("Couldn't get the container workspace path.");
         return;
       }
 
-      const hostPath = toHostPath(containerPath, containerWorkspacePath, hostWorkspacePath);
+      const hostPath = toHostPath(
+        containerPath,
+        containerWorkspacePath,
+        hostWorkspacePath,
+      );
       if (!hostPath) {
         window.showErrorMessage(
           `Could not generate a host path out of ${hostWorkspacePath}, ${containerWorkspacePath} and ${containerPath}.`,

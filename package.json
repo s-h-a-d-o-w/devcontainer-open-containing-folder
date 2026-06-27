@@ -2,36 +2,29 @@
   "name": "devcontainer-open-containing-folder",
   "displayName": "Devcontainer Open Containing Folder",
   "version": "1.2.2",
-  "description": "Seamlessly open foldersin devcontainers.",
+  "description": "Seamlessly open folders in devcontainers.",
   "categories": [
     "Other"
   ],
   "keywords": [
     "context menu",
+    "dev containers",
+    "devcontainer",
     "explorer",
     "file manager",
-    "remote-ssh",
     "reveal",
     "windows"
   ],
-  "homepage": "https://github.com/s-h-a-d-o-w/devcontainer-open-containing-folder#readme",
-  "bugs": {
-    "url": "https://github.com/s-h-a-d-o-w/devcontainer-open-containing-folder/issues"
-  },
   "license": "MIT",
-  "author": {
-    "name": "Andreas Opferkuch",
-    "url": "https://marketplace.visualstudio.com/publishers/s-h-a-d-o-w"
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/s-h-a-d-o-w/devcontainer-open-containing-folder"
   },
   "publisher": "s-h-a-d-o-w",
+  "type": "module",
   "main": "./dist/extension.js",
   "scripts": {
-    "dev": "node esbuild.mjs --watch",
-    "build": "node esbuild.mjs",
+    "build": "node esbuild.ts --production",
     "lint": "oxlint --report-unused-disable-directives-severity=error",
     "package": "pnpm build && vsce package --no-dependencies",
     "prepare": "husky",
@@ -57,7 +50,7 @@
     "commands": [
       {
         "command": "devcontainer-open-containing-folder.revealInExplorer",
-        "title": "Open Containing Folder on Host"
+        "title": "Open Containing Folder"
       }
     ],
     "menus": {
