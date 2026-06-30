@@ -16,7 +16,9 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: lts/*
-      - run: pnpm install
+      - run: |
+          pnpm install
+          pnpm build
       - name: Publish to Open VSX Registry
         uses: HaaLeo/publish-vscode-extension@v2
         id: publishToOpenVSX
