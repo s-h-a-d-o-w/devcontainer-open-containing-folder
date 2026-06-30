@@ -8,4 +8,4 @@ A VS Code extension that adds support for "Open Containing Folder" to devcontain
 
 Loosely based on: https://github.com/sbaillou/vscode-remote-ssh-reveal-explorer
 
-https://github.com/user-attachments/assets/bde80b02-6dc6-41d2-acbf-b10e04f8a9f2
+![Screen recording](assets/screen-recording.gif)
