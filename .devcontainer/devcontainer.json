@@ -1,5 +1,4 @@
 {
-  // https://containers.dev/templates
   "image": "mcr.microsoft.com/devcontainers/javascript-node:24",
 
   "features": {
