@@ -1,11 +1,9 @@
 {
   "compilerOptions": {
+    "strict": true,
     "module": "NodeNext",
     "target": "ESNext",
     "noEmit": true,
-    // "lib": ["es2020", "dom"],
-    // "sourceMap": true,
-    // "rootDir": "./src",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "types": ["node"]
